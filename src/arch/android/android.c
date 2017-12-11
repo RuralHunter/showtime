@@ -44,6 +44,7 @@
 #include "arch/halloc.h"
 #include "misc/md5.h"
 #include "misc/str.h"
+#include "text/text.h"
 
 static char android_manufacturer[PROP_VALUE_MAX];
 static char android_model[PROP_VALUE_MAX];
@@ -239,6 +240,15 @@ JNI_OnLoad(JavaVM *vm, void *reserved)
   return JNI_VERSION_1_6;
 }
 
+/**
+ *
+ */
+static void
+preload_fonts(void)
+{
+  freetype_load_default_font("bundle:///res/fonts/MicroHei.ttf", 100);
+}
+
 
 /**
  *
@@ -304,7 +314,8 @@ Java_com_lonelycoder_mediaplayer_Core_coreInit(JNIEnv *env, jobject obj, jstring
   service_createp("androidstorage", _p("Android Storage"),
                   "file:///storage",
                   "storage", NULL, 0, 1, SVC_ORIGIN_SYSTEM);
-
+  preload_fonts();
+  
   android_nav = nav_spawn();
 
   extern int android_system_audio_sample_rate;
