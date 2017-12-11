@@ -19,6 +19,6 @@ SRCS += src/htsmsg/persistent_file.c
 
 ${BUILDDIR}/src/arch/android/%.o : CFLAGS = ${OPTFLAGS} \
 	-Wall -Werror -Wwrite-strings -Wno-deprecated-declarations \
-			-Wno-multichar -std=gnu99
+			-Wno-multichar -std=gnu99 -Iext/dvd 
 
 include ${TOPDIR}/android/android-dist.mk

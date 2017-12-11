@@ -38,6 +38,7 @@ enable libfreetype
 enable stdin
 enable openssl
 enable vmir
+enable dvd
 
 [ -f project.config ] && source project.config
 
@@ -69,7 +70,7 @@ echo
 if [ ! -x "${SDK}/tools/ant" ]; then
     echo "''ant'' not found in ${SDK}/tools/"
     echo "Check that your configured path to the SDK is correct"
-    die
+#    die
 fi
 
 TOOLCHAIN=${TOPDIR}/build.android/toolchain/bin/arm-linux-androideabi-
