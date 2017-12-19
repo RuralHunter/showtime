@@ -31,6 +31,7 @@
 #include "unicode_casefolding.h"
 #include "charset_detector.h"
 #include "big5.h"
+#include "gb2312.h"
 #include "arch/arch.h"
 
 #include <libavformat/avformat.h> // for av_url_split()
@@ -1439,6 +1440,7 @@ const static charset_t charsets[] = {
   {"CP1258", "Windows 1258", CP1258, convert_table,
    ALIAS("windows-1258", "cswindows1258")},
   {"BIG5", "BIG5", NULL, big5_convert},
+  {"GB2312", "GB2312 (zh_CN)",NULL, gb2312_convert},
 };
 
 #undef ALIAS
