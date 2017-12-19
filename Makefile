@@ -144,6 +144,7 @@ SRCS +=	src/misc/ptrvec.c \
 	src/misc/buf.c \
 	src/misc/charset_detector.c \
 	src/misc/big5.c \
+	src/misc/gb2312.c \
 	src/misc/cancellable.c \
 	src/misc/lockmgr.c \
 	src/misc/prng.c \
