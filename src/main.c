@@ -241,19 +241,19 @@ swthread(void *aux)
     }
 #endif
     navigator_can_start();
-
+    /*
     for(int i = 0; i < 10; i++) {
       if(!upgrade_refresh())
         break;
       sleep(i + 1);
       TRACE(TRACE_DEBUG, "upgrade",
             "Failed to check for app upgrade, retrying in %d seconds", i + 1);
-    }
+    }*/
   } else {
     navigator_can_start();
   }
 
-  load_site_news();
+  //load_site_news();
 
   hts_mutex_lock(&gconf.state_mutex);
   gconf.swrefresh = 0;
@@ -275,8 +275,8 @@ swthread(void *aux)
     if(!timeout)
       plugins_upgrade_check();
 #endif
-    upgrade_refresh();
-    load_site_news();
+    //upgrade_refresh();
+    //load_site_news();
     hts_mutex_lock(&gconf.state_mutex);
   }
   hts_mutex_unlock(&gconf.state_mutex);
