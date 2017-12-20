@@ -5,7 +5,7 @@ maintainer: Rural Hunter<ruralhunter@gmail.com>
 # ./glwskins/flat/ctxmenu/default_details.view
 #
 id: Bookmark
-msg: 收藏夹
+msg: 加入收藏夹
 
 id: Bookmarked
 msg: 已收藏
