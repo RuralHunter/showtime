@@ -172,7 +172,7 @@ msg: 视频数据包
 # ./glwskins/flat/menu/sidebar.view
 #
 id: Bookmark page
-msg: 收藏夹页面
+msg: 收藏页面
 
 id: Page settings
 msg: 页面设置
@@ -184,7 +184,7 @@ id: Reload page
 msg: 刷新页面
 
 id: Remove bookmark
-msg: 移除书签
+msg: 移除收藏
 
 id: Settings
 msg: 设置
