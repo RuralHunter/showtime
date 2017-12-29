@@ -42,6 +42,7 @@ typedef struct android_video {
   int64_t av_pts;
 
   glw_rect_t av_display_rect;
+  frame_info_t fi;
 
 } android_video_t;
 
@@ -66,7 +67,7 @@ android_init(glw_video_t *gv)
   android_video_t *av = calloc(1, sizeof(android_video_t));
   gv->gv_aux = av;
   av->av_pts = PTS_UNSET;
-
+  av->fi.fi_width=0;
   av->av_VideoRenderer = (*env)->NewGlobalRef(env, vr);
 
   class = (*env)->GetObjectClass(env, av->av_VideoRenderer);
@@ -86,123 +87,14 @@ android_newframe(glw_video_t *gv, video_decoder_t *vd0, int flags)
   return av->av_pts;
 }
 
-
-/**
- *
- */
-static void
-android_render(glw_video_t *gv, glw_rctx_t *rc)
-{
-  android_video_t *av = gv->gv_aux;
-
-  if(gv->gv_dar_num && gv->gv_dar_den)
-    glw_stencil_quad(gv->w.glw_root, rc);
-
-  if(!memcmp(&av->av_display_rect, &gv->gv_rect, sizeof(glw_rect_t)))
-    return;
-
-  av->av_display_rect = gv->gv_rect;
-
-  jclass class = av->av_VideoRendererClass;
-
-  JNIEnv *env;
-  (*JVM)->GetEnv(JVM, (void **)&env, JNI_VERSION_1_6);
-
-  jmethodID mid = (*env)->GetMethodID(env, class, "setPosition", "(IIII)V");
-
-  TRACE(TRACE_DEBUG, "GLW", "Video repositioned to %d %d %d %d",
-        gv->gv_rect.x1,
-        gv->gv_rect.y1,
-        gv->gv_rect.x2,
-        gv->gv_rect.y2);
-
-  (*env)->CallVoidMethod(env, av->av_VideoRenderer, mid,
-                         gv->gv_rect.x1,
-                         gv->gv_rect.y1,
-                         gv->gv_rect.x2 - gv->gv_rect.x1,
-                         gv->gv_rect.y2 - gv->gv_rect.y1);
-}
-
-
-
-/**
- *
- */
-static void
-android_reset(glw_video_t *gv)
-{
-  android_glw_root_t *agr = (android_glw_root_t *)gv->w.glw_root;
-  android_video_t *av = gv->gv_aux;
-
-  JNIEnv *env;
-  (*JVM)->GetEnv(JVM, (void **)&env, JNI_VERSION_1_6);
-
-  jclass class = (*env)->GetObjectClass(env, agr->agr_vrp);
-  jmethodID mid = (*env)->GetMethodID(env, class, "destroyVideoRenderer",
-                                      "(Lcom/lonelycoder/mediaplayer/VideoRenderer;)V");
-  (*env)->CallVoidMethod(env, agr->agr_vrp, mid, av->av_VideoRenderer);
-
-  (*env)->DeleteGlobalRef(env, av->av_VideoRenderer);
-  (*env)->DeleteGlobalRef(env, av->av_VideoRendererClass);
-
-  free(av);
-}
-
-
-
-
-static int
-android_yuvp_deliver(const frame_info_t *fi, glw_video_t *gv,
-                     glw_video_engine_t *gve)
+static void renderSurface(glw_video_t *gv)
 {
   JNIEnv *env;
   (*JVM)->GetEnv(JVM, (void **)&env, JNI_VERSION_1_6);
-
-  if(glw_video_configure(gv, gve))
-    return -1;
-
-  android_video_t *av = gv->gv_aux;
-  media_pipe_t *mp = gv->gv_mp;
-
-  int64_t aclock, d;
-  int a_epoch;
-
- recheck:
-  if(gv->w.glw_flags & GLW_DESTROYING)
-    return -1;
-
-  int64_t now = arch_get_avtime();
-  hts_mutex_lock(&mp->mp_clock_mutex);
-  aclock = mp->mp_audio_clock + now -
-    mp->mp_audio_clock_avtime + mp->mp_avdelta;
-  a_epoch = mp->mp_audio_clock_epoch;
-  hts_mutex_unlock(&mp->mp_clock_mutex);
-
-  int64_t pts = fi->fi_pts;
-
-  d = pts - aclock;
-
-  int delta = 0;
-
-  if(pts == AV_NOPTS_VALUE || d < -5000000LL || d > 5000000LL)
-    pts = gv->gv_nextpts;
-
-  if(pts != AV_NOPTS_VALUE && (pts - delta) >= aclock &&
-     a_epoch == fi->fi_epoch) {
-
-    int64_t waittime = (pts - delta) - aclock;
-
-    if(waittime > 100000)
-      waittime = 100000;
-    hts_mutex_unlock(&gv->gv_surface_mutex);
-    usleep(waittime);
-    hts_mutex_lock(&gv->gv_surface_mutex);
-    goto recheck;
-  }
-
-  av->av_pts = pts;
-
+  
   jmethodID mid;
+  android_video_t *av = gv->gv_aux;
+  frame_info_t *fi=&av->fi;
   jclass class = av->av_VideoRendererClass;
 
   (*env)->PushLocalFrame(env, 64);
@@ -241,9 +133,131 @@ android_yuvp_deliver(const frame_info_t *fi, glw_video_t *gv,
   (*env)->CallVoidMethod(env, av->av_VideoRenderer, mid);
 
   (*env)->PopLocalFrame(env, NULL);
-  return 0;
 }
 
+/**
+ *
+ */
+static void
+android_render(glw_video_t *gv, glw_rctx_t *rc)
+{
+  android_video_t *av = gv->gv_aux;
+
+  if(gv->gv_dar_num && gv->gv_dar_den)
+    glw_stencil_quad(gv->w.glw_root, rc);
+
+  if(memcmp(&av->av_display_rect, &gv->gv_rect, sizeof(glw_rect_t)))
+  {
+
+    av->av_display_rect = gv->gv_rect;
+
+    jclass class = av->av_VideoRendererClass;
+
+    JNIEnv *env;
+    (*JVM)->GetEnv(JVM, (void **)&env, JNI_VERSION_1_6);
+
+    jmethodID mid = (*env)->GetMethodID(env, class, "setPosition", "(IIII)V");
+
+    TRACE(TRACE_DEBUG, "GLW", "Video repositioned to %d %d %d %d",
+          gv->gv_rect.x1,
+          gv->gv_rect.y1,
+          gv->gv_rect.x2,
+          gv->gv_rect.y2);
+
+    (*env)->CallVoidMethod(env, av->av_VideoRenderer, mid,
+                           gv->gv_rect.x1,
+                           gv->gv_rect.y1,
+                           gv->gv_rect.x2 - gv->gv_rect.x1,
+                           gv->gv_rect.y2 - gv->gv_rect.y1);
+  }  
+  if(av->fi.fi_width>0)
+    renderSurface(gv);
+}
+
+
+
+/**
+ *
+ */
+static void
+android_reset(glw_video_t *gv)
+{
+  android_glw_root_t *agr = (android_glw_root_t *)gv->w.glw_root;
+  android_video_t *av = gv->gv_aux;
+
+  JNIEnv *env;
+  (*JVM)->GetEnv(JVM, (void **)&env, JNI_VERSION_1_6);
+
+  jclass class = (*env)->GetObjectClass(env, agr->agr_vrp);
+  jmethodID mid = (*env)->GetMethodID(env, class, "destroyVideoRenderer",
+                                      "(Lcom/lonelycoder/mediaplayer/VideoRenderer;)V");
+  (*env)->CallVoidMethod(env, agr->agr_vrp, mid, av->av_VideoRenderer);
+
+  (*env)->DeleteGlobalRef(env, av->av_VideoRenderer);
+  (*env)->DeleteGlobalRef(env, av->av_VideoRendererClass);
+
+  free(av);
+}
+
+
+
+
+static int
+android_yuvp_deliver(const frame_info_t *fi, glw_video_t *gv,
+                     glw_video_engine_t *gve)
+{
+  if(glw_video_configure(gv, gve))
+    return -1;
+
+  android_video_t *av = gv->gv_aux;
+  media_pipe_t *mp = gv->gv_mp;
+
+  int64_t aclock, d;
+  int a_epoch;
+
+ recheck:
+  if(gv->w.glw_flags & GLW_DESTROYING)
+    return -1;
+
+  int64_t now = arch_get_avtime();
+  hts_mutex_lock(&mp->mp_clock_mutex);
+  aclock = mp->mp_audio_clock + now -
+    mp->mp_audio_clock_avtime + mp->mp_avdelta;
+  a_epoch = mp->mp_audio_clock_epoch;
+  hts_mutex_unlock(&mp->mp_clock_mutex);
+
+  int64_t pts = fi->fi_pts;
+
+  d = pts - aclock;
+
+  int delta = 0;
+
+  if(pts == AV_NOPTS_VALUE || (gv->gv_nextpts!=0 && (d < -5000000LL || d > 5000000LL)))
+    pts = gv->gv_nextpts;
+
+  if(pts != AV_NOPTS_VALUE && (pts - delta) >= aclock &&
+     a_epoch == fi->fi_epoch) {
+
+    int64_t waittime = (pts - delta) - aclock;
+
+    if(waittime > 100000)
+      waittime = 100000;
+    hts_mutex_unlock(&gv->gv_surface_mutex);
+    usleep(waittime);
+    hts_mutex_lock(&gv->gv_surface_mutex);
+    goto recheck;
+  }
+
+  av->av_pts = pts;
+  av->fi.fi_width=fi->fi_width;
+  av->fi.fi_height=fi->fi_height;
+  for(int i=0;i<3;i++)
+  {
+      av->fi.fi_data[i]=fi->fi_data[i];
+      av->fi.fi_pitch[i]=fi->fi_pitch[i];
+  }
+  return 0;
+}
 
 /**
  *
