@@ -18,3 +18,5 @@ android/Showtime/libs/
 project.xcworkspace/
 xcuserdata/
 InfoPlist.h
+/config.android
+/config.linux
