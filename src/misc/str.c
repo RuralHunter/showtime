@@ -46,7 +46,7 @@ void
 str_cleanup(char *s, const char *forbidden)
 {
   while(*s) {
-    if(index(forbidden, *s))
+    if(strchr(forbidden, *s))
       *s = '_';
     s++;
   }

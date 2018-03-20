@@ -78,46 +78,46 @@ video_subtitles_lavc(media_pipe_t *mp, media_buf_t *mb,
       switch(r->type) {
 
       case SUBTITLE_BITMAP:
-	vo = calloc(1, sizeof(video_overlay_t));
+		vo = calloc(1, sizeof(video_overlay_t));
 
-	vo->vo_start = mb->mb_pts + sub.start_display_time * 1000;
-	vo->vo_stop  = mb->mb_pts + sub.end_display_time * 1000;
+		vo->vo_start = mb->mb_pts + sub.start_display_time * 1000;
+		vo->vo_stop  = mb->mb_pts + sub.end_display_time * 1000;
 
-    vo->vo_canvas_width  = 720;//ctx->width;
-    vo->vo_canvas_height = 576;//ctx->height;
+		vo->vo_canvas_width  = 720; // ctx->width;
+		vo->vo_canvas_height = 576; // ctx->height;
 
-	vo->vo_x = r->x;
-	vo->vo_y = r->y;
+		vo->vo_x = r->x;
+		vo->vo_y = r->y;
 
-	vo->vo_pixmap = pixmap_create(r->w, r->h, PIXMAP_BGR32, 0);
+		vo->vo_pixmap = pixmap_create(r->w, r->h, PIXMAP_BGR32, 0);
 
-	if(vo->vo_pixmap == NULL) {
-	  free(vo);
-	  break;
-	}
+		if(vo->vo_pixmap == NULL) {
+		  free(vo);
+		  break;
+		}
 
-	const uint8_t *src = r->pict.data[0];
-	const uint32_t *clut = (uint32_t *)r->pict.data[1];
+		const uint8_t *src = r->pict.data[0];
+		const uint32_t *clut = (uint32_t *)r->pict.data[1];
 
-	for(y = 0; y < r->h; y++) {
-	  uint32_t *dst = (uint32_t *)(vo->vo_pixmap->pm_data +
-				       y * vo->vo_pixmap->pm_linesize);
-	  for(x = 0; x < r->w; x++)
-	    *dst++ = clut[src[x]];
+		for(y = 0; y < r->h; y++) {
+		  uint32_t *dst = (uint32_t *)(vo->vo_pixmap->pm_data +
+						   y * vo->vo_pixmap->pm_linesize);
+		  for(x = 0; x < r->w; x++)
+			*dst++ = clut[src[x]];
 
-	  src += r->pict.linesize[0];
-	}
-	video_overlay_enqueue(mp, vo);
-	break;
+		  src += r->pict.linesize[0];
+		}
+		video_overlay_enqueue(mp, vo);
+		break;
 
-      case SUBTITLE_ASS:
-	sub_ass_render(mp, r->ass,
-		       ctx->subtitle_header, ctx->subtitle_header_size,
-		       mb->mb_font_context);
-	break;
+		  case SUBTITLE_ASS:
+		sub_ass_render(mp, r->ass,
+				   ctx->subtitle_header, ctx->subtitle_header_size,
+				   mb->mb_font_context);
+		break;
 
-      default:
-	break;
+		  default:
+		break;
       }
     }
   }
